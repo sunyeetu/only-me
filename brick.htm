@@ -1,826 +1,210 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Brick Breaker — Offline</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Brick Breaker Simple</title>
 <style>
-  :root{
-    --bg1:#0b1020;
-    --bg2:#071026;
-    --accent:#ffd166;
-    --muted:#9aa7bf;
+  html, body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    background: radial-gradient(circle at 30% 30%, #1a2236, #0b0f1a);
   }
-  html,body{
-    height:100%;
-    margin:0;
-    background: radial-gradient(1200px 600px at 10% 10%, rgba(255,177,78,0.06), transparent),
-               radial-gradient(900px 500px at 90% 80%, rgba(120,190,255,0.03), transparent),
-               linear-gradient(180deg,var(--bg1),var(--bg2));
-    color:#e8eef8;
-    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-    -webkit-font-smoothing:antialiased;
-    -moz-osx-font-smoothing:grayscale;
-    overflow:hidden;
-  }
-  #game {
-    position: absolute;
-    inset: 20px;
-    border-radius: 14px;
-    box-shadow: 0 10px 40px rgba(2,6,23,0.8), inset 0 1px 0 rgba(255,255,255,0.02);
-    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.00));
-    display:flex;
-    flex-direction:column;
-    overflow:hidden;
-  }
-  header {
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    padding:14px 18px;
-    gap:8px;
-    backdrop-filter: blur(4px) saturate(1.1);
-  }
-  .left, .right {display:flex; gap:12px; align-items:center;}
-  .brand {
-    font-weight:700;
-    letter-spacing:0.6px;
-    color:var(--accent);
-    display:flex;
-    gap:10px;
-    align-items:center;
-    font-size:16px;
-  }
-  .chip {
-    width:34px;height:34px;border-radius:8px;
-    background: conic-gradient(from 120deg, #ffd166, #ef476f, #06d6a0);
-    box-shadow: 0 4px 10px rgba(0,0,0,0.45), 0 0 8px rgba(255,177,104,0.08) inset;
-  }
-  .stat {
-    font-size:13px;
-    color:var(--muted);
-  }
-  .controls { display:flex; gap:8px; }
-  button {
-    background: rgba(255,255,255,0.03);
-    border: 1px solid rgba(255,255,255,0.04);
-    color: #eaf2ff;
-    padding:8px 12px;
-    border-radius:8px;
-    cursor:pointer;
-    font-weight:600;
-    font-size:13px;
-  }
-  button:hover { transform:translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.4);}
-  canvas { width:100%; height: calc(100% - 64px); display:block; background:transparent; touch-action:none; }
-  footer {
-    position:absolute; right:14px; bottom:12px; font-size:12px; color:rgba(255,255,255,0.35);
-    user-select:none;
-  }
-
-  /* small screen adjustments */
-  @media (max-width:520px){
-    header { padding:10px; gap:6px; }
-    .brand { font-size:14px; }
-    button { padding:6px 10px; font-size:12px; }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    touch-action: none;
   }
 </style>
 </head>
 <body>
-<div id="game" role="application" aria-label="Brick Breaker game">
-  <header>
-    <div class="left">
-      <div class="chip" aria-hidden="true"></div>
-      <div>
-        <div class="brand">BRICK BREAKER</div>
-        <div class="stat">Canvas arcade • Offline</div>
-      </div>
-    </div>
-    <div class="right">
-      <div class="stat">Score: <span id="score">0</span></div>
-      <div class="stat">Lives: <span id="lives">3</span></div>
-      <div class="stat">Level: <span id="level">1</span></div>
-      <div class="controls">
-        <button id="btnPause">Pause</button>
-        <button id="btnRestart">Restart</button>
-      </div>
-    </div>
-  </header>
-
-  <canvas id="canvas"></canvas>
-
-  <footer>Use mouse / touch / ← → / A D to move. Space to launch or pause.</footer>
-</div>
-
+<canvas id="game"></canvas>
 <script>
-/*
-  Brick Breaker — Single-file offline game
-  Features:
-   - Responsive canvas (handles DPR)
-   - Smooth visuals: glow, gradients, rounded bricks
-   - Particles on collisions
-   - Power-ups (expand paddle, multi-ball, slow ball)
-   - WebAudio generated sounds (no external assets)
-   - High score saved in localStorage
-   - Mouse, touch, keyboard controls
-*/
-
 (() => {
-  // ---- Setup ----
-  const canvas = document.getElementById('canvas');
-  const ctx = canvas.getContext('2d', { alpha: true });
-  let W = 800, H = 600;
-  const scoreEl = document.getElementById('score');
-  const livesEl = document.getElementById('lives');
-  const levelEl = document.getElementById('level');
-  const btnPause = document.getElementById('btnPause');
-  const btnRestart = document.getElementById('btnRestart');
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+  let W, H, dpr;
 
-  // High DPI canvas resize
-  function resizeCanvas() {
-    const rect = canvas.getBoundingClientRect();
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    W = Math.max(320, Math.floor(rect.width));
-    H = Math.max(240, Math.floor(rect.height));
-    canvas.width = Math.floor(W * dpr);
-    canvas.height = Math.floor(H * dpr);
-    canvas.style.width = rect.width + 'px';
-    canvas.style.height = rect.height + 'px';
+  function resize() {
+    dpr = window.devicePixelRatio || 1;
+    W = window.innerWidth;
+    H = window.innerHeight;
+    canvas.width = W * dpr;
+    canvas.height = H * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
-  window.addEventListener('resize', resizeCanvas);
-  // initial size (header takes 64px)
-  function initialSize() {
-    const gameRect = document.getElementById('game').getBoundingClientRect();
-    canvas.style.height = (gameRect.height - 64) + 'px';
-    resizeCanvas();
-  }
-  initialSize();
+  window.addEventListener("resize", resize);
+  resize();
 
-  // ---- Audio (WebAudio) ----
-  const AudioCtx = window.AudioContext || window.webkitAudioContext;
-  const audio = new (AudioCtx || function(){})();
-  let audioEnabled = !!AudioCtx;
-  function playBeep(freq = 440, type = 'sine', dur = 0.06, gain = 0.09) {
-    if (!audioEnabled) return;
-    try {
-      const now = audio.currentTime;
-      const o = audio.createOscillator();
-      const g = audio.createGain();
-      o.type = type;
-      o.frequency.setValueAtTime(freq, now);
-      g.gain.setValueAtTime(gain, now);
-      g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
-      o.connect(g); g.connect(audio.destination);
-      o.start(now);
-      o.stop(now + dur + 0.02);
-    } catch (e) { /* silence */ }
-  }
-
-  // small musical blip chain
-  function playChord(freqs, dur=0.12) {
-    if (!audioEnabled) return;
-    const now = audio.currentTime;
-    freqs.forEach((f,i)=>{
-      const o = audio.createOscillator();
-      const g = audio.createGain();
-      o.type = 'triangle';
-      o.frequency.setValueAtTime(f, now + i*0.01);
-      g.gain.setValueAtTime(0.06, now + i*0.01);
-      g.gain.exponentialRampToValueAtTime(0.0001, now + dur + i*0.01);
-      o.connect(g); g.connect(audio.destination);
-      o.start(now + i*0.01);
-      o.stop(now + dur + 0.03 + i*0.01);
-    });
-  }
-
-  // ---- Utility ----
-  function rand(min, max){ return Math.random()*(max-min)+min; }
-  function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
-  function now() { return performance.now(); }
-
-  // ---- Game State ----
+  // Game state
   let score = 0;
+  let highScore = parseInt(localStorage.getItem("bb_highscore") || "0");
   let lives = 3;
   let level = 1;
   let paused = false;
-  let running = true;
-  let highScore = parseInt(localStorage.getItem('bb_high')||'0',10) || 0;
 
-  // paddle
-  let paddle = {
-    x: 0, y: 0, w: 140, h: 14, speed: 1.0, targetX: 0, smoothing: 0.18
-  };
+  const paddle = { x: W/2 - 60, y: H - 40, w: 120, h: 12, speed: 8 };
+  const ball = { x: W/2, y: H/2, r: 8, vx: 4, vy: -4 };
+  const bricks = [];
+  const brickRows = 5, brickCols = 8;
+  const brickMargin = 8;
+  const brickW = (W - brickMargin*(brickCols+1)) / brickCols;
+  const brickH = 24;
 
-  // ball(s)
-  class Ball {
-    constructor(x,y,r=8){
-      this.x=x; this.y=y; this.r=r;
-      this.vx = rand(-2,2); this.vy = -4;
-      this.color = '#fff';
-      this.sticky = true; // start stuck to paddle
-      this.power = null;
-    }
-    draw(ctx){
-      // glow circle
-      const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.r*2.8);
-      g.addColorStop(0,'rgba(255,255,255,0.98)');
-      g.addColorStop(0.25,'rgba(200,240,255,0.9)');
-      g.addColorStop(1,'rgba(20,60,120,0.02)');
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(this.x,this.y,this.r,0,Math.PI*2);
-      ctx.fill();
-      // core
-      ctx.fillStyle = 'rgba(255,255,255,0.95)';
-      ctx.beginPath(); ctx.arc(this.x, this.y, this.r*0.6, 0, Math.PI*2); ctx.fill();
-    }
-  }
-
-  let balls = [];
-
-  // bricks
-  const BRICK_ROWS_BASE = 5;
-  let bricks = [];
-
-  function makeLevel(l){
-    bricks = [];
-    const cols = Math.min(12, 6 + Math.floor(l/2));
-    const rows = Math.min(10, BRICK_ROWS_BASE + Math.floor(l/2));
-    const pad = 10;
-    const areaW = W - 80;
-    const brickW = Math.max(36, (areaW - (cols-1)*pad) / cols);
-    const brickH = Math.min(28, Math.max(18, Math.floor(34 - l*0.6)));
-    const offsetX = (W - ((brickW*cols) + (pad*(cols-1))))/2;
-    const offsetY = 80;
-    for(let r=0;r<rows;r++){
-      for(let c=0;c<cols;c++){
-        const hp = 1 + Math.floor((r + l) / 6); // tougher as rows increase
-        const hue = Math.round(200 - (r/rows)*160 + (c%3)*18 + l*6) % 360;
+  function makeBricks() {
+    bricks.length = 0;
+    for (let r=0;r<brickRows;r++){
+      for (let c=0;c<brickCols;c++){
         bricks.push({
-          x: offsetX + c*(brickW+pad),
-          y: offsetY + r*(brickH+pad),
+          x: brickMargin + c*(brickW+brickMargin),
+          y: 60 + r*(brickH+brickMargin),
           w: brickW,
           h: brickH,
-          hp: hp,
-          maxHp: hp,
-          hue: hue,
-          id: `${l}-${r}-${c}`
+          alive: true
         });
       }
     }
   }
+  makeBricks();
 
-  // particles
-  const particles = [];
-  function spawnParticles(x,y,color,qty=14,spread=2.2){
-    for(let i=0;i<qty;i++){
-      particles.push({
-        x:x, y:y,
-        vx: rand(-spread,spread),
-        vy: rand(-spread*1.4, -spread*0.2),
-        life: rand(420,900),
-        born: now(),
-        size: rand(1.6,4.4),
-        color: color,
-        decay: rand(0.98,0.996)
-      });
+  // Controls
+  let left=false,right=false;
+  window.addEventListener("keydown", e=>{
+    if(e.key==="ArrowLeft"||e.key==="a") left=true;
+    if(e.key==="ArrowRight"||e.key==="d") right=true;
+    if(e.key===" "){ paused=!paused; }
+  });
+  window.addEventListener("keyup", e=>{
+    if(e.key==="ArrowLeft"||e.key==="a") left=false;
+    if(e.key==="ArrowRight"||e.key==="d") right=false;
+  });
+
+  // Mouse/touch move
+  canvas.addEventListener("mousemove", e=>{
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    paddle.x = x - paddle.w/2;
+  });
+  canvas.addEventListener("touchmove", e=>{
+    const rect = canvas.getBoundingClientRect();
+    const x = e.touches[0].clientX - rect.left;
+    paddle.x = x - paddle.w/2;
+  }, {passive:true});
+
+  function resetBall() {
+    ball.x = paddle.x + paddle.w/2;
+    ball.y = paddle.y - ball.r - 2;
+    ball.vx = 4 * (Math.random()>0.5?1:-1);
+    ball.vy = -5;
+  }
+
+  function nextLevel() {
+    level++;
+    makeBricks();
+    resetBall();
+  }
+
+  function loseLife() {
+    lives--;
+    if(lives<=0) {
+      if(score > highScore){
+        highScore = score;
+        localStorage.setItem("bb_highscore", highScore);
+      }
+      score = 0; lives = 3; level = 1;
+      makeBricks();
     }
+    resetBall();
   }
 
-  // power-ups
-  const powerups = [];
-  const POWERUP_TYPES = ['expand', 'multiball', 'slow'];
-  function spawnPowerup(x,y){
-    if (Math.random() > 0.18) return; // chance
-    const type = POWERUP_TYPES[Math.floor(Math.random()*POWERUP_TYPES.length)];
-    powerups.push({
-      x:x, y:y, vx:0, vy:1.15, r:12, type: type, ttl: 14000, born: now()
-    });
-  }
-
-  // ---- Controls ----
-  let input = {left:false,right:false,mouseX:null,dragging:false};
-  window.addEventListener('keydown', e=>{
-    if(e.key==='ArrowLeft' || e.key==='a' || e.key==='A') input.left = true;
-    if(e.key==='ArrowRight' || e.key==='d' || e.key==='D') input.right = true;
-    if(e.key===' '){ // space: launch or pause/resume
-      const anyStuck = balls.some(b=>b.sticky);
-      if(anyStuck) launchStuckBalls();
-      else togglePause();
-      e.preventDefault();
-    }
-  });
-  window.addEventListener('keyup', e=>{
-    if(e.key==='ArrowLeft' || e.key==='a' || e.key==='A') input.left = false;
-    if(e.key==='ArrowRight' || e.key==='d' || e.key==='D') input.right = false;
-  });
-
-  // mouse / touch events for paddle
-  canvas.addEventListener('mousemove', (ev)=>{
-    const rect = canvas.getBoundingClientRect();
-    const x = ev.clientX - rect.left;
-    input.mouseX = x;
-    input.dragging = true;
-  });
-  canvas.addEventListener('mouseleave', ()=>{ input.dragging=false; });
-  canvas.addEventListener('touchstart', (ev)=>{
-    ev.preventDefault();
-    const t = ev.touches[0];
-    const rect = canvas.getBoundingClientRect();
-    input.mouseX = t.clientX - rect.left;
-    input.dragging = true;
-  }, {passive:false});
-  canvas.addEventListener('touchmove', (ev)=>{
-    ev.preventDefault();
-    const t = ev.touches[0];
-    const rect = canvas.getBoundingClientRect();
-    input.mouseX = t.clientX - rect.left;
-  }, {passive:false});
-  canvas.addEventListener('touchend', ()=>{ input.dragging=false; }, {passive:false});
-
-  btnPause.addEventListener('click', togglePause);
-  btnRestart.addEventListener('click', restartGame);
-
-  function togglePause(){
-    paused = !paused;
-    btnPause.textContent = paused ? 'Resume' : 'Pause';
-    if(!paused) lastTime = performance.now(); // reset dt accumulation
-  }
-
-  // ---- Game Lifecycle ----
-  function startLevel(l){
-    level = l;
-    makeLevel(l);
-    // reset paddle and ball
-    paddle.w = 140 - Math.min(60, (l-1)*6);
-    paddle.x = W/2 - paddle.w/2;
-    paddle.y = H - 80;
-    paddle.targetX = paddle.x;
-    balls = [ new Ball(paddle.x + paddle.w/2, paddle.y - 16, 9) ];
-    bricksBrokenThisLevel = 0;
-    updateHUD();
-  }
-
-  function restartGame(){
-    score = 0; lives = 3; level = 1;
-    startLevel(1);
-    paused = false;
-    btnPause.textContent = 'Pause';
-  }
-
-  // initial
-  restartGame();
-
-  // ---- Collision Helpers ----
-  function rectCircleColliding(circle, rect){
-    const distX = Math.abs(circle.x - rect.x - rect.w/2);
-    const distY = Math.abs(circle.y - rect.y - rect.h/2);
-    if (distX > (rect.w/2 + circle.r)) return false;
-    if (distY > (rect.h/2 + circle.r)) return false;
-    if (distX <= (rect.w/2)) return true;
-    if (distY <= (rect.h/2)) return true;
-    const dx = distX - rect.w/2;
-    const dy = distY - rect.h/2;
-    return (dx*dx + dy*dy <= (circle.r*circle.r));
-  }
-
-  // ---- Game Update ----
-  let lastTime = performance.now();
-  let bricksBrokenThisLevel = 0;
-
-  function update(dt){
+  function update() {
     if(paused) return;
 
-    // paddle movement smoothing (mouse has priority)
-    if(input.dragging && input.mouseX !== null){
-      const tx = clamp(input.mouseX - paddle.w/2, 8, W - paddle.w - 8);
-      paddle.targetX = tx;
-    } else {
-      if(input.left) paddle.targetX -= 6 * Math.max(0.8, 1 + level*0.06);
-      if(input.right) paddle.targetX += 6 * Math.max(0.8, 1 + level*0.06);
-      paddle.targetX = clamp(paddle.targetX, 8, W - paddle.w - 8);
+    // Move paddle
+    if(left) paddle.x -= paddle.speed;
+    if(right) paddle.x += paddle.speed;
+    paddle.x = Math.max(0, Math.min(W - paddle.w, paddle.x));
+
+    // Move ball
+    ball.x += ball.vx;
+    ball.y += ball.vy;
+
+    // Collide walls
+    if(ball.x < ball.r || ball.x > W - ball.r) ball.vx *= -1;
+    if(ball.y < ball.r) ball.vy *= -1;
+    if(ball.y > H) loseLife();
+
+    // Collide paddle
+    if(ball.y + ball.r >= paddle.y && ball.x > paddle.x && ball.x < paddle.x + paddle.w && ball.vy > 0){
+      const hitPos = (ball.x - (paddle.x + paddle.w/2)) / (paddle.w/2);
+      ball.vx = hitPos * 6;
+      ball.vy = -Math.abs(ball.vy);
     }
-    paddle.x += (paddle.targetX - paddle.x) * paddle.smoothing;
 
-    // balls
-    for(let i=balls.length-1;i>=0;i--){
-      const b = balls[i];
-      if(b.sticky){
-        // follow paddle before launch
-        b.x = paddle.x + paddle.w/2;
-        b.y = paddle.y - b.r - 2;
-        continue;
-      }
-      b.x += b.vx * dt;
-      b.y += b.vy * dt;
-
-      // walls
-      if(b.x - b.r <= 6){
-        b.x = 6 + b.r; b.vx = Math.abs(b.vx);
-        playBeep(560, 'sine', 0.04, 0.06);
-      }
-      if(b.x + b.r >= W-6){
-        b.x = W-6 - b.r; b.vx = -Math.abs(b.vx);
-        playBeep(560, 'sine', 0.04, 0.06);
-      }
-      if(b.y - b.r <= 6){
-        b.y = 6 + b.r; b.vy = Math.abs(b.vy);
-        playBeep(520, 'sine', 0.04, 0.06);
-      }
-
-      // bottom: lose life if ball out
-      if(b.y - b.r > H){
-        balls.splice(i,1);
-        playBeep(140, 'sawtooth', 0.18, 0.16);
-        spawnParticles(b.x, H - 24, 'rgba(255,90,60,0.9)', 18, 2.8);
-        if(balls.length===0){
-          lives--;
-          updateHUD();
-          if(lives <= 0){
-            gameOver();
-            return;
-          } else {
-            // respawn a single ball stuck to paddle
-            const nb = new Ball(paddle.x + paddle.w/2, paddle.y - 16, 9);
-            nb.sticky = true;
-            balls = [nb];
-          }
-        }
-        continue;
-      }
-
-      // collisions: paddle
-      const paddleRect = {x:paddle.x, y:paddle.y, w:paddle.w, h:paddle.h};
-      if(rectCircleColliding(b, paddleRect) && b.vy > 0){
-        // compute hit point
-        const relative = (b.x - (paddle.x + paddle.w/2)) / (paddle.w/2);
-        const bounce = relative * 3.4; // angle
-        b.vx += bounce;
-        b.vy = -Math.abs(b.vy) * 0.98;
-        // limit speed
-        const sp = Math.hypot(b.vx, b.vy);
-        const cap = 9 + Math.min(level*0.3, 6);
-        if(sp > cap){
-          b.vx *= cap / sp;
-          b.vy *= cap / sp;
-        }
-        // small boost if paddle is expanding powerup active
-        playBeep(720 + Math.abs(relative)*120, 'triangle', 0.03, 0.06);
-        spawnParticles(b.x, b.y + b.r*0.6, 'rgba(200,255,255,0.9)', 6, 1.6);
-      }
-
-      // collisions: bricks (simple AABB-based)
-      for(let j=0;j<bricks.length;j++){
-        const br = bricks[j];
-        if(!br) continue;
-        if(rectCircleColliding(b, br)){
-          // resolve by reflecting depending on collision normal approximation
-          // compute center distances
-          const cx = b.x - (br.x + br.w/2);
-          const cy = b.y - (br.y + br.h/2);
-          const ax = Math.abs(cx) / (br.w/2);
-          const ay = Math.abs(cy) / (br.h/2);
-          if(ax > ay){
-            b.vx = -b.vx;
-            b.x += (cx>0? 6 : -6);
-          } else {
-            b.vy = -b.vy;
-            b.y += (cy>0? 6 : -6);
-          }
-
-          // damage brick
-          br.hp--;
-          spawnParticles(b.x, b.y, `hsla(${br.hue},90%,60%,0.9)`, 12 + br.maxHp*2, 2.6);
-          playBeep(300 + (br.maxHp*40), 'sawtooth', 0.06, 0.06);
-
-          if(br.hp <= 0){
-            // remove brick
-            bricks.splice(j,1);
-            bricksBrokenThisLevel++;
-            score += 10 + br.maxHp*6 + Math.floor(level*2);
-            spawnPowerup(br.x + br.w/2, br.y + br.h/2);
-            playChord([220 + level*6, 330 + level*8, 440 + level*10], 0.16);
-          } else {
-            score += 3 + Math.floor(level*0.8);
-          }
-          updateHUD();
-          break;
-        }
-      }
-    } // end balls loop
-
-    // powerups falling
-    for(let i=powerups.length-1;i>=0;i--){
-      const p = powerups[i];
-      p.y += p.vy * dt;
-      if(p.y > H + 20 || now() - p.born > p.ttl){
-        powerups.splice(i,1); continue;
-      }
-      // catch by paddle
-      if(p.x > paddle.x && p.x < paddle.x + paddle.w && p.y + p.r > paddle.y && p.y - p.r < paddle.y + paddle.h){
-        applyPowerup(p.type);
-        playBeep(860, 'square', 0.07, 0.08);
-        spawnParticles(p.x, p.y, 'rgba(255,235,120,0.95)', 10, 1.8);
-        powerups.splice(i,1);
+    // Collide bricks
+    for(const br of bricks){
+      if(!br.alive) continue;
+      if(ball.x > br.x && ball.x < br.x + br.w &&
+         ball.y - ball.r < br.y + br.h && ball.y + ball.r > br.y){
+        br.alive = false;
+        ball.vy *= -1;
+        score += 10;
       }
     }
 
-    // particles update
-    for(let i=particles.length-1;i>=0;i--){
-      const p = particles[i];
-      const t = (now() - p.born)/1000;
-      p.vy += 0.06 * dt; // gravity-ish
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-      p.size *= p.decay;
-      // remove when tiny or life exceeded
-      if((now() - p.born) > p.life || p.size < 0.2) particles.splice(i,1);
-    }
-
-    // check level clear
-    if(bricks.length === 0){
-      // next level
-      level++;
-      playChord([520,640,780], 0.22);
-      startLevel(level);
+    // Check level clear
+    if(bricks.every(b=>!b.alive)){
+      nextLevel();
     }
   }
 
-  // apply powerups
-  function applyPowerup(type){
-    if(type === 'expand'){
-      paddle.w = Math.min(W - 40, paddle.w * 1.55);
-      // shrink back after some time
-      setTimeout(()=>{ paddle.w = Math.max(90, paddle.w / 1.55); }, 12000);
-    } else if(type === 'multiball'){
-      // spawn 2 extra balls around current ones
-      const clones = [];
-      balls.forEach(b=>{
-        const nb1 = new Ball(b.x + 12, b.y - 8, b.r*0.86);
-        nb1.vx = b.vx + rand(-2,2); nb1.vy = b.vy - rand(0.5,1.8); nb1.sticky = false;
-        const nb2 = new Ball(b.x - 12, b.y - 8, b.r*0.86);
-        nb2.vx = b.vx + rand(-2,2); nb2.vy = b.vy - rand(0.5,1.8); nb2.sticky = false;
-        clones.push(nb1, nb2);
-      });
-      balls = balls.concat(clones);
-    } else if(type === 'slow'){
-      balls.forEach(b=>{
-        b.vx *= 0.62; b.vy *= 0.62;
-      });
-      setTimeout(()=>{
-        balls.forEach(b=>{
-          b.vx *= 1.6; b.vy *= 1.6;
-        });
-      }, 10000);
-    }
-  }
-
-  // launch stuck balls
-  function launchStuckBalls(){
-    balls.forEach(b=>{
-      if(b.sticky){
-        b.sticky = false;
-        b.vx = rand(-3.6,3.6);
-        b.vy = -5 - Math.random()*2 - Math.min(level*0.18, 3);
-      }
-    });
-    playBeep(540, 'sawtooth', 0.06, 0.08);
-  }
-
-  // update HUD display
-  function updateHUD(){
-    scoreEl.textContent = score;
-    livesEl.textContent = lives;
-    levelEl.textContent = level;
-    if(score > highScore){ highScore = score; localStorage.setItem('bb_high', String(highScore)); }
-  }
-
-  // game over
-  function gameOver(){
-    paused = true;
-    btnPause.textContent = 'Pause';
-    // small overlay + reset after small delay
-    ctx.save();
-    ctx.fillStyle = 'rgba(4,6,12,0.55)';
-    ctx.fillRect(0,0,W,H);
-    ctx.restore();
-    // flash and restart new game after short delay
-    setTimeout(()=>{
-      alert(`Game Over\nScore: ${score}\nHigh Score: ${highScore}`);
-      restartGame();
-    }, 80);
-  }
-
-  // ---- Drawing ----
-  function draw(){
-    // clear (let background through)
+  function draw() {
     ctx.clearRect(0,0,W,H);
 
-    // moving starfield / subtle background dots
-    drawBackground();
-
-    // draw bricks
+    // Bricks
     for(const br of bricks){
-      drawBrick(br);
-    }
-
-    // draw powerups
-    for(const p of powerups){
-      drawPowerup(p);
-    }
-
-    // draw paddle shadow
-    ctx.save();
-    ctx.beginPath();
-    ctx.ellipse(paddle.x + paddle.w/2, paddle.y + paddle.h + 8, paddle.w*0.45, 10, 0, 0, Math.PI*2);
-    ctx.fillStyle = 'rgba(0,0,0,0.22)';
-    ctx.fill();
-    ctx.restore();
-
-    // draw paddle
-    const pg = ctx.createLinearGradient(paddle.x, paddle.y, paddle.x, paddle.y + paddle.h);
-    pg.addColorStop(0, 'rgba(255,255,255,0.12)');
-    pg.addColorStop(1, 'rgba(255,255,255,0.02)');
-    ctx.fillStyle = pg;
-    roundRect(ctx, paddle.x, paddle.y, paddle.w, paddle.h, 8);
-    ctx.fill();
-
-    // paddle glossy sheen
-    ctx.save();
-    ctx.beginPath();
-    ctx.fillStyle = 'rgba(255,255,255,0.06)';
-    ctx.roundRect(paddle.x + 10, paddle.y + 2, paddle.w - 20, paddle.h*0.6, 6);
-    ctx.fill();
-    ctx.restore();
-
-    // balls
-    for(const b of balls) b.draw(ctx);
-
-    // particles
-    for(const p of particles){
-      ctx.save();
-      ctx.globalAlpha = clamp(1 - ((now() - p.born)/p.life), 0, 1);
-      ctx.fillStyle = p.color;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
-      ctx.fill();
-      ctx.restore();
-    }
-
-    // UI overlay: hint for stuck ball
-    const anyStuck = balls.some(b=>b.sticky);
-    if(anyStuck && !paused){
-      ctx.save();
-      ctx.font = "14px Inter, Arial";
-      ctx.fillStyle = "rgba(255,255,255,0.08)";
-      const t = "Press SPACE or tap to launch";
-      const tw = ctx.measureText(t).width;
-      ctx.fillText(t, W/2 - tw/2, H - 36);
-      ctx.restore();
-    }
-  }
-
-  // subtle animated background: moving gradient & stars
-  let bgOffset = 0;
-  function drawBackground(){
-    // animated radial streak
-    bgOffset += 0.0016;
-    ctx.save();
-    const grd = ctx.createLinearGradient(0, 0, W, H);
-    grd.addColorStop(0, 'rgba(6,10,28,0.08)');
-    grd.addColorStop(1, 'rgba(8,14,34,0.02)');
-    ctx.fillStyle = grd;
-    ctx.fillRect(0,0,W,H);
-
-    // faint moving beams
-    ctx.globalCompositeOperation = 'lighter';
-    for(let i=0;i<3;i++){
-      const x = (Math.sin(bgOffset*1.6 + i*1.7) * 0.5 + 0.5) * W;
-      const g = ctx.createRadialGradient(x, H*0.2 + i*50, 10, x, H*0.2 + i*50, W*0.8);
-      g.addColorStop(0, 'rgba(30,80,160,0.03)');
-      g.addColorStop(1, 'rgba(30,80,160,0.00)');
+      if(!br.alive) continue;
+      const g = ctx.createLinearGradient(br.x, br.y, br.x, br.y+br.h);
+      g.addColorStop(0,"#4ef");
+      g.addColorStop(1,"#27a");
       ctx.fillStyle = g;
-      ctx.fillRect(0,0,W,H);
-    }
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.restore();
-  }
-
-  function drawBrick(br){
-    ctx.save();
-    // brick background with rounded corners and inner glow
-    const g = ctx.createLinearGradient(br.x, br.y, br.x, br.y + br.h);
-    const hue = br.hue;
-    const t = 0.14 + (br.hp/br.maxHp)*0.64;
-    g.addColorStop(0, `hsl(${hue}, 78%, ${55 + t*6}%)`);
-    g.addColorStop(1, `hsl(${(hue+30)%360}, 70%, ${50 - t*6}%)`);
-    roundRect(ctx, br.x, br.y, br.w, br.h, 6);
-    ctx.fillStyle = g;
-    ctx.fill();
-
-    // inner bevel
-    ctx.beginPath();
-    roundRect(ctx, br.x+2, br.y+2, br.w-4, br.h-4, 4);
-    ctx.fillStyle = `rgba(255,255,255,${0.04 + (br.hp/br.maxHp)*0.05})`;
-    ctx.fill();
-
-    // HP indicator (small stripe)
-    if(br.maxHp > 1){
-      const stripes = br.maxHp;
-      const width = (br.w - 8) / stripes;
-      for(let s=0;s<stripes;s++){
-        const x = br.x + 4 + s*width;
-        ctx.fillStyle = (s < br.hp) ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)';
-        ctx.fillRect(x, br.y + br.h - 6, width - 4, 4);
-      }
+      ctx.fillRect(br.x, br.y, br.w, br.h);
     }
 
-    // subtle shadow
-    ctx.shadowColor = `rgba(0,0,0,0.35)`;
-    ctx.shadowBlur = 10;
-    ctx.strokeStyle = 'rgba(0,0,0,0.06)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.restore();
-  }
+    // Paddle
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(paddle.x, paddle.y, paddle.w, paddle.h);
 
-  function drawPowerup(p){
-    ctx.save();
-    // floating icon circle
-    const gradient = ctx.createRadialGradient(p.x-3,p.y-3,2,p.x,p.y,p.r*3);
-    if(p.type==='expand') gradient.addColorStop(0,'rgba(255,235,140,0.98)'), gradient.addColorStop(1,'rgba(255,160,50,0.05)');
-    if(p.type==='multiball') gradient.addColorStop(0,'rgba(180,230,255,0.98)'), gradient.addColorStop(1,'rgba(60,140,255,0.04)');
-    if(p.type==='slow') gradient.addColorStop(0,'rgba(200,255,200,0.98)'), gradient.addColorStop(1,'rgba(50,200,120,0.04)');
-    ctx.fillStyle = gradient;
+    // Ball
     ctx.beginPath();
-    ctx.arc(p.x, p.y, p.r, 0, Math.PI*2); ctx.fill();
+    ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2);
+    ctx.fillStyle = "#ffd166";
+    ctx.fill();
 
-    // icon
-    ctx.fillStyle = 'rgba(8,12,20,0.9)'; ctx.font = '700 12px Inter, Arial';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    const sym = p.type==='expand' ? '▤' : p.type==='multiball' ? '⚪' : '🕑';
-    ctx.fillText(sym, p.x, p.y+0.4);
-    ctx.restore();
+    // Text
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.font = "16px Arial";
+    ctx.fillText(`Score: ${score}`, 16, 24);
+    ctx.fillText(`High: ${highScore}`, 16, 44);
+    ctx.fillText(`Lives: ${lives}`, W - 100, 24);
+    ctx.fillText(`Level: ${level}`, W - 100, 44);
+
+    if(paused){
+      ctx.font = "24px Arial";
+      ctx.fillText("PAUSED", W/2 - 50, H/2);
+    }
   }
 
-  function roundRect(ctx, x, y, w, h, r){
-    const radius = Math.min(r, w/2, h/2);
-    ctx.beginPath();
-    ctx.moveTo(x + radius, y);
-    ctx.arcTo(x + w, y, x + w, y + h, radius);
-    ctx.arcTo(x + w, y + h, x, y + h, radius);
-    ctx.arcTo(x, y + h, x, y, radius);
-    ctx.arcTo(x, y, x + w, y, radius);
-    ctx.closePath();
-  }
-
-  // ---- Main Loop ----
-  function loop(ts){
-    const cur = ts;
-    const dtRaw = (cur - lastTime) / (1000/60); // normalized to ~1 per frame
-    const dt = clamp(dtRaw, 0, 4); // protect against huge gaps
-    lastTime = cur;
-
-    update(dt);
+  function loop(){
+    update();
     draw();
-    if(running) requestAnimationFrame(loop);
+    requestAnimationFrame(loop);
   }
-  requestAnimationFrame(loop);
-
-  // adjust when page becomes visible/hidden
-  document.addEventListener('visibilitychange', ()=>{
-    if(document.hidden){
-      paused = true;
-      btnPause.textContent = 'Resume';
-    }
-  });
-
-  // ensure canvas resized initially when fonts load or layout finishes
-  setTimeout(()=>{ initialSize(); }, 300);
-
-  // expose some debug / convenience
-  window.BrickBreaker = {
-    restart: restartGame,
-    togglePause,
-    getState: ()=>({score, lives, level, bricksCount: bricks.length, balls: balls.length, highScore})
-  };
-
-  // small friendly first-time audio unlock for mobile (some browsers block audio until user interacts)
-  function unlockAudioOnInteraction(){
-    if(!audioEnabled) return;
-    const resume = async () => {
-      try {
-        if(audio.state === 'suspended') await audio.resume();
-        playBeep(440, 'sine', 0.03, 0.03);
-      } catch(e){}
-      window.removeEventListener('pointerdown', resume);
-      window.removeEventListener('touchstart', resume);
-    };
-    window.addEventListener('pointerdown', resume);
-    window.addEventListener('touchstart', resume);
-  }
-  unlockAudioOnInteraction();
+  resetBall();
+  loop();
 })();
 </script>
 </body>
