@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Offline HTML Editor Launcher</title>
+  <script>
+    window.onload = function() {
+      const editorHTML = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Offline HTML Editor (about:blank)</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <style>
+            :root {
+              --bg-light: #f5f6fa;
+              --fg-light: #222;
+              --accent-light: #0074d9;
+              --panel-light: #fff;
+              --border-light: #eee;
+              --bg-dark: #181a1b;
+              --fg-dark: #e4e6eb;
+              --accent-dark: #00b5ff;
+              --panel-dark: #23272a;
+              --border-dark: #333;
+              --error: #ff3b30;
+              --bg-pgm: #000;
+              --fg-green: #00ff00;
+              --fg-purple: #b97aff;
+            }
+            body {
+              margin: 0;
+              min-height: 100vh;
+              font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
+              background: var(--bg-light);
+              color: var(--fg-light);
+              transition: background 0.3s, color 0.3s;
+              display: flex;
+              flex-direction: column;
+              height: 100vh;
+              box-sizing: border-box;
+            }
+            body.theme-light {
+              background: var(--bg-light);
+              color: var(--fg-light);
+            }
+            body.theme-dark {
+              background: var(--bg-dark);
+              color: var(--fg-dark);
+            }
+            body.theme-green {
+              background: var(--bg-pgm);
+              color: var(--fg-green);
+            }
+            body.theme-purple {
+              background: var(--bg-pgm);
+              color: var(--fg-purple);
+            }
+            .toolbar {
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              background: var(--panel-light);
+              border-bottom: 1px solid var(--border-light);
+              padding: 0.7em 1.5em;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+              position: sticky;
+              top: 0;
+              z-index: 2;
+            }
+            body.theme-dark .toolbar {
+              background: var(--panel-dark);
+              border-bottom: 1px solid var(--border-dark);
+            }
+            body.theme-green .toolbar,
+            body.theme-purple .toolbar {
+              background: #111;
+              border-bottom: 1px solid #222;
+            }
+            .toolbar-left {
+              display: flex;
+              align-items: center;
+              gap: 1em;
+            }
+            .toolbar-right {
+              display: flex;
+              align-items: center;
+              gap: 1em;
+            }
+            .toolbar-title {
+              font-size: 1.2em;
+              font-weight: 600;
+              letter-spacing: -1px;
+              margin-right: 1.5em;
+            }
+            .themes-btn {
+              font-size: 1em;
+              padding: 0.5em 1.2em;
+              border-radius: 0.5em;
+              border: none;
+              background: var(--accent-light);
+              color: #fff;
+              font-weight: 500;
+              cursor: pointer;
+              transition: background 0.3s;
+              margin-left: 1em;
+            }
+            body.theme-dark .themes-btn {
+              background: var(--accent-dark);
+            }
+            body.theme-green .themes-btn {
+              background: var(--fg-green);
+              color: #000;
+            }
+            body.theme-purple .themes-btn {
+              background: var(--fg-purple);
+              color: #000;
+            }
+            .upload-label {
+              display: flex;
+              align-items: center;
+              background: var(--accent-light);
+              color: #fff;
+              border-radius: 0.5em;
+              padding: 0.6em 1.2em;
+              font-size: 1em;
+              font-weight: 500;
+              cursor: pointer;
+              transition: background 0.3s;
+              border: none;
+              position: relative;
+              margin-right: 0.2em;
+              gap: 0.6em;
+            }
+            .upload-label:hover {
+              background: #005fa3;
+            }
+            body.theme-dark .upload-label {
+              background: var(--accent-dark);
+            }
+            body.theme-dark .upload-label:hover {
+              background: #0074d9;
+            }
+            body.theme-green .upload-label {
+              background: var(--fg-green);
+              color: #000;
+            }
+            body.theme-green .upload-label:hover {
+              background: #38c172;
+              color: #000;
+            }
+            body.theme-purple .upload-label {
+              background: var(--fg-purple);
+              color: #000;
+            }
+            body.theme-purple .upload-label:hover {
+              background: #6247aa;
+              color: #000;
+            }
+            .upload-label input[type="file"] {
+              display: none;
+            }
+            button.action-btn {
+              background: var(--accent-light);
+              color: #fff;
+              border: none;
+              border-radius: 0.5em;
+              padding: 0.7em 1.2em;
+              cursor: pointer;
+              font-size: 1em;
+              font-weight: 500;
+              transition: background 0.3s;
+            }
+            button.action-btn:hover {
+              background: #005fa3;
+            }
+            body.theme-dark button.action-btn {
+              background: var(--accent-dark);
+            }
+            body.theme-dark button.action-btn:hover {
+              background: #0074d9;
+            }
+            body.theme-green button.action-btn {
+              background: var(--fg-green);
+              color: #000;
+            }
+            body.theme-green button.action-btn:hover {
+              background: #38c172;
+              color: #000;
+            }
+            body.theme-purple button.action-btn {
+              background: var(--fg-purple);
+              color: #000;
+            }
+            body.theme-purple button.action-btn:hover {
+              background: #6247aa;
+              color: #000;
+            }
+            .editor-panel {
+              flex: 1;
+              display: flex;
+              flex-direction: column;
+              align-items: stretch;
+              justify-content: stretch;
+              height: 100%;
+              min-height: 0;
+            }
+            textarea {
+              width: 100%;
+              height: 100%;
+              min-height: 0;
+              resize: none;
+              border: none;
+              outline: none;
+              background: var(--bg-light);
+              color: var(--fg-light);
+              padding: 1.2em;
+              font-family: 'Fira Mono', 'Consolas', 'Menlo', 'monospace';
+              font-size: 1.08em;
+              box-sizing: border-box;
+              transition: background 0.3s, color 0.3s, box-shadow 0.3s, border 0.3s;
+              flex: 1;
+              border-top: 1px solid var(--border-light);
+            }
+            body.theme-dark textarea {
+              background: var(--bg-dark);
+              color: var(--fg-dark);
+              border-top: 1px solid var(--border-dark);
+            }
+            body.theme-green textarea {
+              background: var(--bg-pgm);
+              color: var(--fg-green);
+              border-top: 1px solid #222;
+            }
+            body.theme-purple textarea {
+              background: var(--bg-pgm);
+              color: var(--fg-purple);
+              border-top: 1px solid #222;
+            }
+            textarea.error {
+              box-shadow: 0 0 0 2px var(--error);
+              border-top: 1px solid var(--error);
+            }
+            .error-message {
+              color: var(--error);
+              background: var(--panel-light);
+              padding: 0.5em 1em;
+              border-radius: 0.5em;
+              margin: 0.7em 2em 0.7em 2em;
+              font-size: 1em;
+              border: 1px solid var(--error);
+              display: flex;
+              align-items: center;
+              gap: 0.6em;
+              justify-content: space-between;
+              animation: fadeIn 0.3s;
+            }
+            .error-message.hide {
+              display: none !important;
+            }
+            .error-dismiss {
+              background: transparent;
+              border: none;
+              color: var(--error);
+              font-size: 1.3em;
+              cursor: pointer;
+              margin-left: 1em;
+              line-height: 1;
+              outline: none;
+            }
+            @keyframes fadeIn {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
+            /* Themes Popup */
+            .themes-popup-bg {
+              display: none;
+              position: fixed;
+              left: 0; top: 0;
+              width: 100vw; height: 100vh;
+              background: rgba(0,0,0,0.3);
+              z-index: 1000;
+              align-items: center;
+              justify-content: center;
+            }
+            .themes-popup-bg.active {
+              display: flex;
+            }
+            .themes-popup {
+              background: #111 !important;
+              color: #fff !important;
+              padding: 2em;
+              border-radius: 1em;
+              box-shadow: 0 4px 32px rgba(0,0,0,0.14);
+              min-width: 320px;
+              max-width: 95vw;
+              animation: fadeIn 0.25s;
+              display: flex;
+              flex-direction: column;
+              gap: 1.5em;
+              align-items: center;
+              position: relative;
+            }
+            .theme-preview-row {
+              display: flex;
+              gap: 1em;
+              width: 100%;
+              justify-content: center;
+              flex-wrap: wrap;
+            }
+            .theme-sample {
+              border-radius: 0.7em;
+              padding: 1em;
+              text-align: center;
+              min-width: 120px;
+              min-height: 60px;
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              font-size: 1em;
+              cursor: pointer;
+              border: 2px solid transparent;
+              transition: border 0.2s;
+              margin-bottom: 1em;
+            }
+            .theme-sample.selected {
+              border: 2px solid #0074d9;
+            }
+            .theme-sample.theme-light {
+              background: #f5f6fa !important;
+              color: #222 !important;
+              border-color: #0074d9;
+            }
+            .theme-sample.theme-dark {
+              background: #181a1b !important;
+              color: #e4e6eb !important;
+              border-color: #00b5ff;
+            }
+            .theme-sample.theme-green {
+              background: #000 !important;
+              color: #00ff00 !important;
+              border-color: #00ff00;
+            }
+            .theme-sample.theme-purple {
+              background: #000 !important;
+              color: #b97aff !important;
+              border-color: #b97aff;
+            }
+            .theme-sample.theme-custom {
+              background: #f5f6fa !important;
+              color: #222 !important;
+              border-color: #888;
+              position: relative;
+            }
+            .custom-controls {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              gap: 0.5em;
+              width: 100%;
+              margin-top: 1em;
+              color: #fff !important;
+            }
+            .custom-controls label {
+              font-size: 0.95em;
+              margin-right: 0.6em;
+              margin-bottom: 0.2em;
+              display: flex;
+              align-items: center;
+              gap: 0.5em;
+              color: #fff !important;
+            }
+            .custom-controls input[type="color"], .custom-controls input[type="text"] {
+              margin-left: 0.4em;
+              padding: 0.3em;
+              border-radius: 0.3em;
+              border: 1px solid #ccc;
+            }
+            .custom-controls input[type="text"] {
+              width: 120px;
+            }
+            .themes-popup-title {
+              font-size: 1.2em;
+              font-weight: 600;
+              margin-bottom: 0.5em;
+              text-align: center;
+              color: #fff !important;
+            }
+            .themes-popup-close {
+              position: absolute;
+              right: 1em; top: 1em;
+              background: transparent;
+              border: none;
+              font-size: 1.5em;
+              color: #fff !important;
+              cursor: pointer;
+              outline: none;
+            }
+            .themes-popup * {
+              color: inherit !important;
+            }
+            @media (max-width: 650px) {
+              .toolbar {
+                padding: 0.5em 0.5em;
+                flex-wrap: wrap;
+                gap: 0.5em;
+              }
+              .upload-label, button.action-btn, .themes-btn { font-size: 0.95em; padding: 0.4em 0.7em;}
+              .error-message { margin: 0.5em 0.5em; font-size: 0.95em;}
+              .toolbar-title { font-size: 1em; margin-right: 0.5em;}
+              .themes-popup { padding: 1em; min-width: 220px;}
+            }
+          </style>
+        </head>
+        <body class="theme-light">
+          <div class="toolbar">
+            <div class="toolbar-left">
+              <span class="toolbar-title">HTML Editor</span>
+              <label class="upload-label">
+                <span>Upload HTML</span>
+                <input type="file" id="fileInput" accept=".html,.htm" title="Upload HTML file"/>
+              </label>
+              <button class="action-btn" onclick="previewHTML()">Preview</button>
+              <button class="action-btn" onclick="downloadHTML()">Download</button>
+            </div>
+            <div class="toolbar-right">
+              <button class="themes-btn" id="themesBtn" title="Choose theme">Themes</button>
+            </div>
+          </div>
+          <div class="editor-panel">
+            <textarea id="editor" autofocus>
+<!DOCTYPE html>
+<html>
+<head>
+  <title>My Test Page</title>
+</head>
+<body>
+  <h1>Hello, World!</h1>
+  <p>This is a test.</p>
+</body>
+</html>
+            </textarea>
+            <div class="error-message hide" id="error-message">
+              <span id="error-text"></span>
+              <button class="error-dismiss" id="error-dismiss" title="Dismiss error">&times;</button>
+            </div>
+          </div>
+          <div class="themes-popup-bg" id="themesPopupBg">
+            <div class="themes-popup" id="themesPopup">
+              <button class="themes-popup-close" id="themesPopupClose" title="Close">&times;</button>
+              <div class="themes-popup-title">Choose a Theme</div>
+              <div class="theme-preview-row">
+                <div class="theme-sample theme-light" data-theme="light">
+                  <div>Light</div>
+                  <pre>&lt;h1&gt;Hello&lt;/h1&gt;</pre>
+                </div>
+                <div class="theme-sample theme-dark" data-theme="dark">
+                  <div>Dark</div>
+                  <pre>&lt;h1&gt;Hello&lt;/h1&gt;</pre>
+                </div>
+                <div class="theme-sample theme-green" data-theme="green">
+                  <div>Programmer Green</div>
+                  <pre style="color:#00ff00;background:#000;">&lt;h1&gt;Hello&lt;/h1&gt;</pre>
+                </div>
+                <div class="theme-sample theme-purple" data-theme="purple">
+                  <div>Programmer Purple</div>
+                  <pre style="color:#b97aff;background:#000;">&lt;h1&gt;Hello&lt;/h1&gt;</pre>
+                </div>
+                <div class="theme-sample theme-custom" data-theme="custom">
+                  <div>Custom</div>
+                  <pre id="customPreview">&lt;h1&gt;Hello&lt;/h1&gt;</pre>
+                </div>
+              </div>
+              <div class="custom-controls" id="customControls" style="display:none;">
+                <label>
+                  Background:
+                  <input type="color" id="customBg" value="#f5f6fa">
+                </label>
+                <label>
+                  Text:
+                  <input type="color" id="customFg" value="#222222">
+                </label>
+                <label>
+                  Gradient (CSS):
+                  <input type="text" id="customGradient" placeholder="e.g. linear-gradient(#222,#eee)">
+                </label>
+                <label>
+                  Accent:
+                  <input type="color" id="customAccent" value="#0074d9">
+                </label>
+              </div>
+            </div>
+          </div>
+          <script>
+            // Theme switch logic
+            let selectedTheme = 'light';
+            let customTheme = {
+              bg: '#f5f6fa',
+              fg: '#222222',
+              accent: '#0074d9',
+              gradient: ''
+            };
+
+            function setTheme(theme, custom = null) {
+              document.body.className = 'theme-' + theme;
+              selectedTheme = theme;
+              localStorage.setItem('editorTheme', theme);
+              if (theme === 'custom' && custom) {
+                document.body.style.background = custom.gradient || custom.bg;
+                document.body.style.color = custom.fg;
+                document.querySelector('.toolbar').style.background = custom.bg;
+                document.querySelector('.toolbar').style.color = custom.fg;
+                document.querySelector('.toolbar').style.borderBottom = '1px solid ' + custom.accent;
+                document.getElementById('editor').style.background = custom.gradient || custom.bg;
+                document.getElementById('editor').style.color = custom.fg;
+                document.getElementById('editor').style.borderTop = '1px solid ' + custom.accent;
+                document.querySelectorAll('.action-btn,.upload-label').forEach(btn => {
+                  btn.style.background = custom.accent;
+                  btn.style.color = custom.fg;
+                });
+              } else {
+                document.body.style.background = '';
+                document.body.style.color = '';
+                document.querySelector('.toolbar').style.background = '';
+                document.querySelector('.toolbar').style.color = '';
+                document.querySelector('.toolbar').style.borderBottom = '';
+                document.getElementById('editor').style.background = '';
+                document.getElementById('editor').style.color = '';
+                document.getElementById('editor').style.borderTop = '';
+                document.querySelectorAll('.action-btn,.upload-label').forEach(btn => {
+                  btn.style.background = '';
+                  btn.style.color = '';
+                });
+              }
+            }
+            (function() {
+              let theme = localStorage.getItem('editorTheme');
+              if (!theme) {
+                theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+              }
+              if (theme === 'custom') {
+                let custom = localStorage.getItem('editorCustomTheme');
+                if (custom) customTheme = JSON.parse(custom);
+                setTheme('custom', customTheme);
+              }
+              else setTheme(theme);
+            })();
+
+            // Theme popup logic
+            const themesBtn = document.getElementById('themesBtn');
+            const themesPopupBg = document.getElementById('themesPopupBg');
+            const themesPopupClose = document.getElementById('themesPopupClose');
+            const themeSamples = document.querySelectorAll('.theme-sample');
+            const customControls = document.getElementById('customControls');
+            const customBg = document.getElementById('customBg');
+            const customFg = document.getElementById('customFg');
+            const customAccent = document.getElementById('customAccent');
+            const customGradient = document.getElementById('customGradient');
+            const customPreview = document.getElementById('customPreview');
+
+            themesBtn.onclick = () => {
+              themesPopupBg.classList.add('active');
+              themeSamples.forEach(s => s.classList.remove('selected'));
+              document.querySelector('.theme-sample.theme-' + selectedTheme).classList.add('selected');
+              if (selectedTheme === 'custom') customControls.style.display = '';
+              else customControls.style.display = 'none';
+            };
+            themesPopupClose.onclick = () => {
+              themesPopupBg.classList.remove('active');
+            };
+            themesPopupBg.onclick = (e) => {
+              if (e.target === themesPopupBg) themesPopupBg.classList.remove('active');
+            };
+
+            // Theme selection and custom theme logic
+            themeSamples.forEach(s => {
+              s.onclick = () => {
+                themeSamples.forEach(t => t.classList.remove('selected'));
+                s.classList.add('selected');
+                let theme = s.dataset.theme;
+                if (theme === 'custom') {
+                  customControls.style.display = '';
+                  setTheme('custom', customTheme);
+                  localStorage.setItem('editorTheme', 'custom');
+                  // Do NOT close popup
+                } else {
+                  customControls.style.display = 'none';
+                  setTheme(theme);
+                  localStorage.setItem('editorTheme', theme);
+                  themesPopupBg.classList.remove('active');
+                }
+              };
+            });
+            // Custom theme controls
+            function updateCustomTheme() {
+              customTheme.bg = customBg.value;
+              customTheme.fg = customFg.value;
+              customTheme.accent = customAccent.value;
+              customTheme.gradient = customGradient.value;
+              // Live preview
+              customPreview.style.background = customTheme.gradient || customTheme.bg;
+              customPreview.style.color = customTheme.fg;
+              setTheme('custom', customTheme);
+              localStorage.setItem('editorCustomTheme', JSON.stringify(customTheme));
+            }
+            [customBg, customFg, customAccent, customGradient].forEach(input => {
+              input.oninput = updateCustomTheme;
+            });
+
+            // Syntax checking logic
+            const editor = document.getElementById('editor');
+            const errorMessage = document.getElementById('error-message');
+            const errorText = document.getElementById('error-text');
+            const errorDismiss = document.getElementById('error-dismiss');
+            let lastError = '';
+
+            function showError(msg) {
+              lastError = msg;
+              errorText.textContent = msg;
+              errorMessage.classList.remove('hide');
+              editor.classList.add('error');
+            }
+            function hideError() {
+              errorMessage.classList.add('hide');
+              editor.classList.remove('error');
+              lastError = '';
+            }
+            errorDismiss.onclick = hideError;
+
+            function validateHTML(showMsg = true) {
+              const parser = new DOMParser();
+              let html = editor.value;
+              let doc = parser.parseFromString(html, 'text/html');
+              let error = '';
+              if (doc.querySelector('parsererror')) {
+                error = 'Your HTML contains syntax errors.';
+              } else if (!html.includes('<html') || !html.includes('<body')) {
+                error = 'HTML should include <html> and <body> tags.';
+              }
+              if (error) {
+                if (showMsg) showError(error);
+                return false;
+              } else {
+                hideError();
+                return true;
+              }
+            }
+            editor.addEventListener('input', () => validateHTML(true));
+
+            // Download button logic
+            function downloadHTML() {
+              if (!validateHTML(true)) return;
+              const html = editor.value;
+              const blob = new Blob([html], {type: 'text/html'});
+              const a = document.createElement('a');
+              a.href = URL.createObjectURL(blob);
+              a.download = 'edited.html';
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+            }
+            // Preview button logic
+            function previewHTML() {
+              if (!validateHTML(true)) return;
+              const html = editor.value;
+              const previewWin = window.open('about:blank', '_blank');
+              previewWin.document.open();
+              previewWin.document.write(html);
+              previewWin.document.close();
+            }
+            // Upload logic
+            document.getElementById('fileInput').addEventListener('change', function(e) {
+              const file = e.target.files[0];
+              if (file) {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                  editor.value = evt.target.result;
+                  validateHTML(true);
+                };
+                reader.readAsText(file);
+              }
+            });
+          <\/script>
+        </body>
+        </html>
+      `;
+
+      const win = window.open('about:blank', '_blank');
+      win.document.open();
+      win.document.write(editorHTML);
+      win.document.close();
+      window.close();
+    };
+  </script>
+</head>
+<body>
+</body>
+</html>
