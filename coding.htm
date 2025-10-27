@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Offline HTML Editor Launcher</title>
+  <title>HTML editor</title>
   <script>
     window.onload = function() {
       const editorHTML = `
         <!DOCTYPE html>
         <html>
         <head>
-          <title>Offline HTML Editor (about:blank)</title>
+          <title>loading...</title>
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <style>
             :root {
@@ -414,9 +414,9 @@
         <body class="theme-light">
           <div class="toolbar">
             <div class="toolbar-left">
-              <span class="toolbar-title">HTML Editor</span>
+              <span class="toolbar-title">Code Editor</span>
               <label class="upload-label">
-                <span>Upload HTML</span>
+                <span>Upload Code</span>
                 <input type="file" id="fileInput" accept=".html,.htm" title="Upload HTML file"/>
               </label>
               <button class="action-btn" onclick="previewHTML()">Preview</button>
